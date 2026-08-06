@@ -1,0 +1,159 @@
+{
+  "truncation": {
+    "games": 400,
+    "prefixes": 13708,
+    "refused": 13707,
+    "silentlyAccepted": 1,
+    "survivors": [
+      {
+        "seed": 324,
+        "keptChars": 34,
+        "of": 35,
+        "verdict": "accepted-different",
+        "digits": 53
+      }
+    ]
+  },
+  "oneCharacterChanged": {
+    "games": 60,
+    "edits": 133308,
+    "refused": 133308,
+    "silentlyAccepted": 0,
+    "survivors": [],
+    "why": "A single base64 character spans at most 16 consecutive payload bits, and CRC-16/CCITT detects every burst error of 16 bits or fewer. So this is arithmetic rather than luck."
+  },
+  "forgery": {
+    "bitFlipWithRepairedChecksum": {
+      "attempts": 400,
+      "accepted": 118,
+      "decodedToADifferentGame": 118,
+      "examples": [
+        {
+          "seed": 8,
+          "original": "AQEJqs_w_Dm5rDlCUwEtrwEtMA38W2B6HLbM",
+          "forged": "AQEJqs_w_Dm5rDlCUwEtrwEtMA38W2B6Habt",
+          "verdict": "accepted-different",
+          "digits": 59
+        },
+        {
+          "seed": 9,
+          "original": "AQHCCwtBsyyMqnVkyCzfoevUYYHe1B0Q",
+          "forged": "AQHCCwtBsyyMqnVkyCzfoevUYYHe1Q0x",
+          "verdict": "accepted-different",
+          "digits": 52
+        },
+        {
+          "seed": 10,
+          "original": "AQEgspEPzFVszhVWuVYctrRYLSpmzdiWzA",
+          "forged": "AQEgspEPzFVszhVWuVYctrRYLSpmzdmG7Q",
+          "verdict": "accepted-different",
+          "digits": 59
+        }
+      ],
+      "note": "Refusals here are the sentinel, not the checksum. The checksum had already been repaired by the attacker. An accumulator that does not divide back down to 1 is a code the encoder could not have written."
+    },
+    "encodeAnyGameYouLike": {
+      "attempts": 400,
+      "accepted": 400,
+      "note": "No editing required, so no integrity check can see it. Play the game you wanted and encode it with the same encoder. This is the one that matters."
+    },
+    "conclusion": "The CRC is a transmission check and the sentinel is a well-formedness check. Neither is a signature. There is no key anywhere in this format, so nothing distinguishes a code you produced from a code your opponent produced. It is not tamper evident, and base64 is not a signature. What the format does guarantee is that whatever comes back decodes to a LEGAL game, because every digit is read against a freshly generated move list. An illegal position cannot be smuggled through. A different legal position can."
+  },
+  "differentGame": {
+    "differentGameId": {
+      "refusedWith": "WRONG_GAME"
+    },
+    "unrelatedSessionSameGame": {
+      "decodes": true,
+      "digits": 59,
+      "extendsOurGame": false,
+      "note": "It decodes cleanly, because it is a legal game. The format cannot object. The page refuses it only because Session.extendsFrom compares it against the longest game the browser has stored, and that memory is local, optional, and overridable."
+    }
+  },
+  "replay": {
+    "finalDecisions": 59,
+    "replayedDecisions": 30,
+    "olderLinkDecodes": true,
+    "currentExtendsOlder": true,
+    "olderExtendsCurrent": false,
+    "guard": "Session.extendsFrom, compared against a digit list held in localStorage",
+    "guardIsAuthoritative": false,
+    "conclusion": "A player can rewind. An older link is a valid link and it decodes into the earlier position with no complaint from the format. What stops it is the receiving page noticing that the link is not an extension of the longest game it has stored, which requires that the page has storage, has seen the longer game, and that the player does not press the override. None of that is a property of the URL."
+  },
+  "length": {
+    "charsPerDecision": 0.484,
+    "emptyGameCode": 7,
+    "longestObserved": 38,
+    "provenBound": 52,
+    "provenBoundLink": 100,
+    "clientLimit": 2000,
+    "reachable": false,
+    "headroom": 1900,
+    "capacityAtOtherBranchingFactors": [
+      {
+        "branchingFactor": 2,
+        "decisionsThatFit": 11679
+      },
+      {
+        "branchingFactor": 4,
+        "decisionsThatFit": 5839
+      },
+      {
+        "branchingFactor": 8,
+        "decisionsThatFit": 3893
+      },
+      {
+        "branchingFactor": 20,
+        "decisionsThatFit": 2702
+      },
+      {
+        "branchingFactor": 60,
+        "decisionsThatFit": 1977
+      }
+    ],
+    "note": "For Reversi the 2000 character limit is unreachable: the rules cap the code at 52 characters, so the longest link this game can produce is 100. The capacity table is for other games on the same courier."
+  },
+  "mangling": [
+    {
+      "what": "a trailing full stop",
+      "verdict": "refused",
+      "code": "BAD_FORMAT"
+    },
+    {
+      "what": "a trailing bracket",
+      "verdict": "refused",
+      "code": "BAD_FORMAT"
+    },
+    {
+      "what": "lowercased by a client",
+      "verdict": "refused",
+      "code": "CHECKSUM_MISMATCH"
+    },
+    {
+      "what": "uppercased by a client",
+      "verdict": "refused",
+      "code": "BAD_FORMAT"
+    },
+    {
+      "what": "a space inserted mid-code",
+      "verdict": "accepted-same"
+    },
+    {
+      "what": "wrapped onto two lines",
+      "verdict": "accepted-same"
+    },
+    {
+      "what": "two characters transposed",
+      "verdict": "refused",
+      "code": "CHECKSUM_MISMATCH"
+    },
+    {
+      "what": "percent-encoded by a client",
+      "verdict": "accepted-same"
+    },
+    {
+      "what": "the whole link, not just the code",
+      "verdict": "accepted-same"
+    }
+  ]
+}

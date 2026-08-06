@@ -321,6 +321,24 @@ export class Session {
       s.history.push({ kind: 'move', move: legal[index], by });
       s._settle();
     }
+    /* The accumulator must land exactly on the sentinel. packDigits starts it at 1, so every
+       honest code divides back down to 1 and no other value is reachable.
+
+       Leaving this unchecked is not cosmetic. Reading digits until the value merely drops below
+       2 also accepts values that reach 0, and those are codes the encoder can never emit: more
+       than half of all accumulators in a small sweep decoded to a game whose re-encoding was a
+       DIFFERENT string. That breaks the round trip the page depends on, because a player who
+       pastes such a link is shown a code other than the one they were sent and then forwards
+       that one instead. It also gives corrupted input that happens to survive the checksum a
+       second chance to look like a legitimate game. */
+    if (a !== 1n) {
+      throw new CourierError(
+        'NOT_CANONICAL',
+        'this code is not one this format can produce. It decoded into a legal game, and the ' +
+          'trailing value is wrong, which means it was altered or assembled by something else.',
+        { sentinel: String(a) },
+      );
+    }
     return s;
   }
 }

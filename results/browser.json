@@ -76,7 +76,7 @@
     "linkLength": 112
   },
   "rtc": {
-    "offerChars": 636,
+    "offerChars": 635,
     "answerChars": 632,
     "connected": true,
     "why": ""

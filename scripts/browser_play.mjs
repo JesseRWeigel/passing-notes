@@ -20,13 +20,15 @@ import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { createRequire } from 'node:module';
-import { homedir } from 'node:os';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const PAGE = pathToFileURL(join(root, 'docs', 'index.html')).href;
 const TITLE = 'Passing Notes: Reversi with no server';
 const FIXTURE = join(root, 'fixtures', 'recorded-game.json');
 const record = process.argv.includes('--record');
+
+// Never print an absolute path: verify output is pasted into the README.
+const short = (p) => String(p).replace(`${root}/`, '').replace(root, '.');
 
 let pass = 0;
 let fail = 0;
@@ -63,7 +65,7 @@ for (const candidate of [process.env.PLAYWRIGHT_CORE, join(root, 'node_modules',
 }
 if (!chromium) {
   console.error('No usable playwright-core. Tried:');
-  for (const t of tried) console.error(`    ${t.replace(homedir(), '~')}`);
+  for (const t of tried) console.error(`    ${short(t)}`);
   console.error('Install it with: npm install  (then npx playwright install chromium)');
   console.error('Without a browser nothing here is checked: the page is never loaded, no game is');
   console.error('played, and the offline claim is never tested. The unit suite covers the codec only.');
@@ -78,7 +80,7 @@ try {
   console.error('Install the browser build with: npx playwright install chromium');
   process.exit(2);
 }
-console.log(`  chromium via ${from.replace(homedir(), '~')}`);
+console.log(`  chromium via ${short(from)}`);
 
 /* Replace every way a page can reach the network, before the page's own script runs. A call
    is recorded and then throws, so a page that tries is both visible and broken rather than
@@ -155,7 +157,7 @@ try {
   const white = await openPage(await offlineContext());
   await identify(black, 'black');
   await identify(white, 'white');
-  ok(`both pages loaded from ${PAGE.replace(homedir(), '~')} and ran their script`);
+  ok('both pages loaded from docs/index.html over file:// and ran their script');
 
   const audit = await black.evaluate(() => {
     const loaderSelector = [

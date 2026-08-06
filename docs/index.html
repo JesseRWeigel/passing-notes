@@ -406,6 +406,7 @@ function b64urlToBytes(str) {
   for (let i = 0; i < str.length; i += 4) {
     const chunk = Math.min(4, str.length - i);
     let n = 0;
+    let last = 0;
     for (let j = 0; j < 4; j++) {
       const ch = j < chunk ? str[i + j] : 'A';
       const v = B64_INV.get(ch);
@@ -413,6 +414,15 @@ function b64urlToBytes(str) {
         throw new CourierError('BAD_FORMAT', `the code contains ${JSON.stringify(ch)}, which is not part of a code`);
       }
       n = (n << 6) | v;
+      if (j === chunk - 1) last = v;
+    }
+    // A short final group carries bits that decode to nothing: 4 spare bits after one byte,
+    // 2 after two bytes. If they are not zero, this is not a string this encoder produced.
+    // Left unchecked, several different codes decode to the same bytes, which turns a
+    // corrupted character into a silent alias rather than a checksum failure.
+    const spare = chunk === 2 ? 0b1111 : chunk === 3 ? 0b11 : 0;
+    if ((last & spare) !== 0) {
+      throw new CourierError('BAD_FORMAT', 'the last character of this code carries bits that cannot be part of it');
     }
     out.push((n >> 16) & 255);
     if (chunk > 2) out.push((n >> 8) & 255);
@@ -631,6 +641,24 @@ class Session {
       s.state = game.apply(s.state, legal[index]);
       s.history.push({ kind: 'move', move: legal[index], by });
       s._settle();
+    }
+    /* The accumulator must land exactly on the sentinel. packDigits starts it at 1, so every
+       honest code divides back down to 1 and no other value is reachable.
+
+       Leaving this unchecked is not cosmetic. Reading digits until the value merely drops below
+       2 also accepts values that reach 0, and those are codes the encoder can never emit: more
+       than half of all accumulators in a small sweep decoded to a game whose re-encoding was a
+       DIFFERENT string. That breaks the round trip the page depends on, because a player who
+       pastes such a link is shown a code other than the one they were sent and then forwards
+       that one instead. It also gives corrupted input that happens to survive the checksum a
+       second chance to look like a legitimate game. */
+    if (a !== 1n) {
+      throw new CourierError(
+        'NOT_CANONICAL',
+        'this code is not one this format can produce. It decoded into a legal game, and the ' +
+          'trailing value is wrong, which means it was altered or assembled by something else.',
+        { sentinel: String(a) },
+      );
     }
     return s;
   }
