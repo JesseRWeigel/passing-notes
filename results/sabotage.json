@@ -1,0 +1,196 @@
+{
+  "sabotages": [
+    {
+      "number": 1,
+      "name": "move ordering reversed",
+      "file": "src/reversi.mjs",
+      "gate1": true,
+      "gate2": true,
+      "fingerprintWas": "15b0b1be64aa42a7",
+      "fingerprintNow": "6903b9f93892d6a3",
+      "caughtBy": [
+        "tests",
+        "fixture"
+      ],
+      "gate3": true
+    },
+    {
+      "number": 2,
+      "name": "one of the eight directions dropped",
+      "file": "src/reversi.mjs",
+      "gate1": true,
+      "gate2": true,
+      "fingerprintWas": "15b0b1be64aa42a7",
+      "fingerprintNow": "5e76dfcfa95d030f",
+      "caughtBy": [
+        "tests",
+        "fixture"
+      ],
+      "gate3": true
+    },
+    {
+      "number": 3,
+      "name": "row-edge wrap guard disabled",
+      "file": "src/reversi.mjs",
+      "gate1": true,
+      "gate2": true,
+      "fingerprintWas": "15b0b1be64aa42a7",
+      "fingerprintNow": "bf8b8d626f90b1d6",
+      "caughtBy": [
+        "tests",
+        "fixture"
+      ],
+      "gate3": true
+    },
+    {
+      "number": 4,
+      "name": "opening position corrupted",
+      "file": "src/reversi.mjs",
+      "gate1": true,
+      "gate2": true,
+      "fingerprintWas": "15b0b1be64aa42a7",
+      "fingerprintNow": "90b594e489aa4892",
+      "caughtBy": [
+        "tests",
+        "fixture"
+      ],
+      "gate3": true
+    },
+    {
+      "number": 5,
+      "name": "a bracketed run no longer needs a bracket",
+      "file": "src/reversi.mjs",
+      "gate1": true,
+      "gate2": true,
+      "fingerprintWas": "15b0b1be64aa42a7",
+      "fingerprintNow": "c087df6eee5cd95d",
+      "caughtBy": [
+        "tests",
+        "fixture"
+      ],
+      "gate3": true
+    },
+    {
+      "number": 6,
+      "name": "the canonical-form check removed",
+      "file": "src/courier.mjs",
+      "gate1": true,
+      "gate2": true,
+      "fingerprintWas": "15b0b1be64aa42a7",
+      "fingerprintNow": "e9ffa9ae40a559d1",
+      "caughtBy": [
+        "tests"
+      ],
+      "gate3": true
+    },
+    {
+      "number": 7,
+      "name": "CRC polynomial altered",
+      "file": "src/courier.mjs",
+      "gate1": true,
+      "gate2": true,
+      "fingerprintWas": "15b0b1be64aa42a7",
+      "fingerprintNow": "39496d90ed6b08d5",
+      "caughtBy": [
+        "tests",
+        "fixture"
+      ],
+      "gate3": true
+    },
+    {
+      "number": 8,
+      "name": "base64 spare-bit check removed",
+      "file": "src/courier.mjs",
+      "gate1": true,
+      "gate2": true,
+      "fingerprintWas": "15b0b1be64aa42a7",
+      "fingerprintNow": "868311df8bc9c15e",
+      "caughtBy": [
+        "tests"
+      ],
+      "gate3": true
+    },
+    {
+      "number": 9,
+      "name": "forced moves no longer derived",
+      "file": "src/courier.mjs",
+      "gate1": true,
+      "gate2": true,
+      "fingerprintWas": "15b0b1be64aa42a7",
+      "fingerprintNow": "cb11d66e07072520",
+      "caughtBy": [
+        "tests",
+        "fixture"
+      ],
+      "gate3": true
+    },
+    {
+      "number": 10,
+      "name": "the proven length bound halved",
+      "file": "src/courier.mjs",
+      "gate1": true,
+      "gate2": true,
+      "fingerprintWas": "15b0b1be64aa42a7",
+      "fingerprintNow": "c6fd14ee95e5c9ab",
+      "caughtBy": [
+        "tests"
+      ],
+      "gate3": true
+    },
+    {
+      "number": 11,
+      "name": "mixed-radix accumulation off by one",
+      "file": "src/courier.mjs",
+      "gate1": true,
+      "gate2": true,
+      "fingerprintWas": "15b0b1be64aa42a7",
+      "fingerprintNow": "0b00572a440ec37f",
+      "caughtBy": [
+        "tests",
+        "fixture"
+      ],
+      "gate3": true
+    },
+    {
+      "number": 12,
+      "name": "the page lies about being serverless",
+      "file": "src/rtc.mjs",
+      "gate1": true,
+      "gate2": true,
+      "fingerprintWas": "15b0b1be64aa42a7",
+      "fingerprintNow": "b83212d42211f593",
+      "caughtBy": [
+        "tests"
+      ],
+      "gate3": true
+    },
+    {
+      "number": 13,
+      "name": "the rewind guard disabled",
+      "file": "src/ui.mjs",
+      "gate1": true,
+      "gate2": true,
+      "fingerprintWas": "b9ecfd73d5e11554",
+      "fingerprintNow": "6c4754972a4ecae3",
+      "caughtBy": [
+        "browser"
+      ],
+      "gate3": true
+    },
+    {
+      "number": 14,
+      "name": "the score readout swapped",
+      "file": "src/ui.mjs",
+      "gate1": true,
+      "gate2": true,
+      "fingerprintWas": "b9ecfd73d5e11554",
+      "fingerprintNow": "62c4112a1b0eb433",
+      "caughtBy": [
+        "browser"
+      ],
+      "gate3": true
+    }
+  ],
+  "problems": [],
+  "nullControl": "passed"
+}
