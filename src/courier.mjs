@@ -85,6 +85,7 @@ export function b64urlToBytes(str) {
   for (let i = 0; i < str.length; i += 4) {
     const chunk = Math.min(4, str.length - i);
     let n = 0;
+    let last = 0;
     for (let j = 0; j < 4; j++) {
       const ch = j < chunk ? str[i + j] : 'A';
       const v = B64_INV.get(ch);
@@ -92,6 +93,15 @@ export function b64urlToBytes(str) {
         throw new CourierError('BAD_FORMAT', `the code contains ${JSON.stringify(ch)}, which is not part of a code`);
       }
       n = (n << 6) | v;
+      if (j === chunk - 1) last = v;
+    }
+    // A short final group carries bits that decode to nothing: 4 spare bits after one byte,
+    // 2 after two bytes. If they are not zero, this is not a string this encoder produced.
+    // Left unchecked, several different codes decode to the same bytes, which turns a
+    // corrupted character into a silent alias rather than a checksum failure.
+    const spare = chunk === 2 ? 0b1111 : chunk === 3 ? 0b11 : 0;
+    if ((last & spare) !== 0) {
+      throw new CourierError('BAD_FORMAT', 'the last character of this code carries bits that cannot be part of it');
     }
     out.push((n >> 16) & 255);
     if (chunk > 2) out.push((n >> 8) & 255);

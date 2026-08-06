@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Passing Notes: Reversi with no server</title>
+<meta name="description" content="Two-player Reversi that needs no server, no account and no hosting. The whole game history rides in a link you paste into any chat app.">
+<style>
+/*INLINE:STYLE*/
+</style>
+</head>
+<body>
+<main>
+
+<header>
+  <h1>Passing Notes</h1>
+  <p class="lede">Reversi for two people, with nothing in the middle. Play a move, copy the link,
+  paste it wherever you already talk to each other. There is no server, no account and no
+  hosting bill, because the entire game travels inside the link.</p>
+  <p class="lede">Save this page to disk and it still works. Everything you need is in this one
+  file, and it never asks the network for anything.</p>
+</header>
+
+<section id="game" aria-label="the board">
+  <div class="statusbar">
+    <p class="score"><span class="chip black"></span><strong id="score-black">2</strong> black</p>
+    <p class="score"><span class="chip white"></span><strong id="score-white">2</strong> white</p>
+    <p class="turn">to move: <strong id="turn">black</strong>
+      (<span id="legal-count">4</span> legal moves)</p>
+  </div>
+
+  <div id="board" class="board" role="grid" aria-label="Reversi board"></div>
+
+  <p id="outcome" class="outcome" data-winner="none" hidden></p>
+  <p id="hint" class="hint"></p>
+  <p id="error" class="error" role="alert" hidden></p>
+
+  <div id="pending" class="pending" hidden>
+    <p>If you are sure this is the game you want, you can take it and forget what you had.</p>
+    <textarea id="pending-code" rows="2" readonly aria-label="the refused code"></textarea>
+    <button type="button" id="accept-anyway">Take this link anyway</button>
+  </div>
+
+  <div id="autolog-wrap" class="autolog" hidden>
+    <h3>Played for you</h3>
+    <ul id="autolog"></ul>
+  </div>
+</section>
+
+<section aria-label="send your move">
+  <h2>Your turn is over, send this</h2>
+  <label for="link">The link</label>
+  <textarea id="link" rows="3" readonly spellcheck="false"></textarea>
+  <label for="code">The code on its own, if the link is awkward to paste</label>
+  <textarea id="code" rows="2" readonly spellcheck="false"></textarea>
+  <p class="controls">
+    <button type="button" id="copy-link">Copy the link</button>
+    <button type="button" id="copy-code">Copy the code</button>
+    <button type="button" id="new">Start over</button>
+    <span id="copy-status" class="muted" role="status"></span>
+  </p>
+  <p class="muted">
+    The link is <strong id="link-length">0</strong> characters and the code inside it is
+    <strong id="code-length">0</strong>. That
+    <strong id="code-fit">fits</strong>.
+    No legal game of Reversi can ever need more than <strong id="bound-chars">52</strong>
+    characters of code, because there are at most <strong id="bound-bits">274</strong> bits of
+    choice in the whole game. This is a bound, not a measurement, so the link cannot quietly
+    outgrow what your chat app will carry.
+  </p>
+  <p class="muted">
+    <strong id="digit-count">0</strong> of the <strong id="ply-count">0</strong> moves played so
+    far are actually written in the code. The other <strong id="auto-count">0</strong> were
+    forced, so the reader works them out instead of being told.
+  </p>
+</section>
+
+<section aria-label="receive their move">
+  <h2>They sent you one, paste it here</h2>
+  <label for="paste">Their link or their code</label>
+  <textarea id="paste" rows="3" spellcheck="false" placeholder="paste here"></textarea>
+  <p class="controls"><button type="button" id="load">Load their move</button></p>
+  <p class="muted">
+    Rewind guard: <strong id="storage-state">off</strong>. <span id="storage-why"></span>
+  </p>
+</section>
+
+<section aria-label="how this works">
+  <h2>What is actually going on</h2>
+  <p>At every turn you pick one of the legal moves, so your choice is worth
+  log2(number of legal moves) bits and nothing more. The code is the whole game written as one
+  number in a mixed radix, where each digit's radix is how many moves were legal at that point.</p>
+  <ul>
+    <li>A position with only one legal move costs zero bits. So do passes. Your opponent's
+    browser works those out from the rules rather than being told.</li>
+    <li>Reading digit <em>k</em> requires replaying moves 0 to <em>k</em>-1 and generating the
+    legal moves at that position, so a mangled code cannot decode into an illegal position. It
+    either fails the checksum or turns into some other legal game.</li>
+    <li>That is legality, and it is not honesty. Whoever holds the state can hand back a legal
+    game that rewinds their blunder. The rewind guard above is the answer, and it only works
+    where the browser lets this page remember things.</li>
+  </ul>
+</section>
+
+<section aria-label="live mode">
+  <h2>Live mode, and why it is not the default</h2>
+  <details>
+    <summary>WebRTC with the signalling done by hand</summary>
+    <p class="muted">WebRTC available here: <strong id="rtc-supported">no</strong>.
+      Serverless in this configuration: <strong id="rtc-serverless">yes</strong>.</p>
+    <p class="muted" id="rtc-honesty"></p>
+    <p>One of you presses Make an offer and sends the blob. The other pastes it, presses
+    Answer, and sends the reply back. The first player pastes that and the two browsers talk
+    directly. After that, moves travel by themselves.</p>
+    <label for="rtc-out">Blob to send</label>
+    <textarea id="rtc-out" rows="3" readonly spellcheck="false"></textarea>
+    <label for="rtc-in">Blob you were sent</label>
+    <textarea id="rtc-in" rows="3" spellcheck="false"></textarea>
+    <p class="controls">
+      <button type="button" id="rtc-offer">Make an offer</button>
+      <button type="button" id="rtc-answer">Answer their offer</button>
+      <button type="button" id="rtc-accept">Accept their answer</button>
+    </p>
+    <p class="muted" id="rtc-status" role="status"></p>
+  </details>
+</section>
+
+<footer>
+  <p>Reversi on a courier that knows nothing about Reversi. The courier is the reusable part.
+  Source and the write up:
+  <a href="https://github.com/JesseRWeigel/passing-notes">github.com/JesseRWeigel/passing-notes</a>.
+  One of a public catalog of build ideas:
+  <a href="https://github.com/JesseRWeigel/722-things-to-build">722-things-to-build</a>.</p>
+</footer>
+
+</main>
+<script>
+/*INLINE:SCRIPT*/
+</script>
+</body>
+</html>

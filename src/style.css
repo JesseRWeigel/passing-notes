@@ -1,0 +1,182 @@
+:root {
+  color-scheme: light dark;
+  --ink: #17201c;
+  --paper: #f4f1e8;
+  --panel: #fffdf7;
+  --line: #cdc7b6;
+  --muted: #5d6660;
+  --felt: #2f6b47;
+  --felt-line: #24543a;
+  --accent: #9a4a1f;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --ink: #e9e6dc;
+    --paper: #14171a;
+    --panel: #1c2126;
+    --line: #333c44;
+    --muted: #9aa5ad;
+    --felt: #24543a;
+    --felt-line: #1a4029;
+    --accent: #e2a06a;
+  }
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font: 16px/1.55 ui-serif, Georgia, "Times New Roman", serif;
+}
+
+main {
+  max-width: 46rem;
+  margin: 0 auto;
+  padding: 2rem 1rem 4rem;
+}
+
+h1 {
+  font-size: clamp(1.9rem, 6vw, 2.6rem);
+  margin: 0 0 .4rem;
+  letter-spacing: -.015em;
+}
+h2 { font-size: 1.15rem; margin: 2.2rem 0 .6rem; }
+h3 { font-size: .95rem; margin: .8rem 0 .3rem; }
+
+.lede { margin: .5rem 0; max-width: 38rem; }
+
+section { border-top: 1px solid var(--line); padding-top: .4rem; }
+section[aria-label="the board"] { border-top: 0; }
+
+.statusbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .3rem 1.2rem;
+  align-items: baseline;
+  margin: 1.2rem 0 .6rem;
+  font-variant-numeric: tabular-nums;
+}
+.statusbar p { margin: 0; }
+.chip {
+  display: inline-block;
+  width: .8em;
+  height: .8em;
+  border-radius: 50%;
+  margin-right: .35em;
+  vertical-align: -.05em;
+  border: 1px solid var(--felt-line);
+}
+.chip.black { background: #10130f; }
+.chip.white { background: #f7f5ee; }
+
+.board {
+  display: grid;
+  grid-template-columns: repeat(8, 1fr);
+  gap: 2px;
+  background: var(--felt-line);
+  border: 3px solid var(--felt-line);
+  border-radius: 4px;
+  width: min(100%, 30rem);
+  aspect-ratio: 1;
+}
+
+.cell {
+  all: unset;
+  background: var(--felt);
+  display: grid;
+  place-items: center;
+  aspect-ratio: 1;
+  cursor: default;
+  position: relative;
+}
+.cell[data-legal="yes"] { cursor: pointer; }
+.cell[data-legal="yes"]::after {
+  content: "";
+  width: 22%;
+  height: 22%;
+  border-radius: 50%;
+  background: #ffffff44;
+}
+.cell[data-legal="yes"]:hover { background: #3b8256; }
+.cell:focus-visible { outline: 3px solid var(--accent); outline-offset: -3px; }
+.cell[data-disc="black"]::after,
+.cell[data-disc="white"]::after {
+  content: "";
+  width: 76%;
+  height: 76%;
+  border-radius: 50%;
+  box-shadow: 0 1px 2px #0006;
+}
+.cell[data-disc="black"]::after { background: #10130f; }
+.cell[data-disc="white"]::after { background: #f7f5ee; }
+
+.outcome {
+  font-size: 1.2rem;
+  font-weight: 700;
+  margin: .8rem 0 0;
+}
+.hint { color: var(--muted); margin: .4rem 0; }
+.error {
+  margin: .6rem 0;
+  padding: .6rem .8rem;
+  border-left: 4px solid var(--accent);
+  background: var(--panel);
+}
+.pending { margin: .6rem 0; padding: .6rem .8rem; background: var(--panel); border: 1px solid var(--line); }
+.pending p { margin: 0 0 .4rem; }
+.autolog { margin: .6rem 0; }
+.autolog ul { margin: 0; padding-left: 1.2rem; color: var(--muted); }
+
+label {
+  display: block;
+  font-size: .82rem;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin: .8rem 0 .2rem;
+}
+
+textarea {
+  width: 100%;
+  font: 13px/1.4 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  padding: .5rem .6rem;
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  background: var(--panel);
+  color: var(--ink);
+  resize: vertical;
+  word-break: break-all;
+}
+
+.controls { display: flex; flex-wrap: wrap; gap: .5rem; align-items: center; margin: .6rem 0; }
+
+button {
+  font: inherit;
+  font-size: .92rem;
+  padding: .4rem .9rem;
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  background: var(--panel);
+  color: var(--ink);
+  cursor: pointer;
+}
+button:hover { border-color: var(--accent); }
+button:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+
+.muted { color: var(--muted); font-size: .93rem; }
+
+ul { max-width: 38rem; }
+li { margin: .3rem 0; }
+
+details summary { cursor: pointer; font-weight: 700; margin: .4rem 0; }
+
+footer {
+  border-top: 1px solid var(--line);
+  margin-top: 2.5rem;
+  padding-top: .8rem;
+  color: var(--muted);
+  font-size: .9rem;
+}
+a { color: inherit; }

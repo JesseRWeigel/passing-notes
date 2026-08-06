@@ -1,0 +1,17 @@
+{
+  "name": "passing-notes",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "A two-player game with no server: the whole game history rides in a link you paste into any chat app",
+  "license": "MIT",
+  "engines": { "node": ">=20" },
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "test": "node --test test/*.test.mjs",
+    "verify": "bash scripts/verify.sh"
+  },
+  "devDependencies": {
+    "playwright-core": "1.58.2"
+  }
+}

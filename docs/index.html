@@ -1,0 +1,1381 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Passing Notes: Reversi with no server</title>
+<meta name="description" content="Two-player Reversi that needs no server, no account and no hosting. The whole game history rides in a link you paste into any chat app.">
+<style>
+:root {
+  color-scheme: light dark;
+  --ink: #17201c;
+  --paper: #f4f1e8;
+  --panel: #fffdf7;
+  --line: #cdc7b6;
+  --muted: #5d6660;
+  --felt: #2f6b47;
+  --felt-line: #24543a;
+  --accent: #9a4a1f;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --ink: #e9e6dc;
+    --paper: #14171a;
+    --panel: #1c2126;
+    --line: #333c44;
+    --muted: #9aa5ad;
+    --felt: #24543a;
+    --felt-line: #1a4029;
+    --accent: #e2a06a;
+  }
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font: 16px/1.55 ui-serif, Georgia, "Times New Roman", serif;
+}
+
+main {
+  max-width: 46rem;
+  margin: 0 auto;
+  padding: 2rem 1rem 4rem;
+}
+
+h1 {
+  font-size: clamp(1.9rem, 6vw, 2.6rem);
+  margin: 0 0 .4rem;
+  letter-spacing: -.015em;
+}
+h2 { font-size: 1.15rem; margin: 2.2rem 0 .6rem; }
+h3 { font-size: .95rem; margin: .8rem 0 .3rem; }
+
+.lede { margin: .5rem 0; max-width: 38rem; }
+
+section { border-top: 1px solid var(--line); padding-top: .4rem; }
+section[aria-label="the board"] { border-top: 0; }
+
+.statusbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .3rem 1.2rem;
+  align-items: baseline;
+  margin: 1.2rem 0 .6rem;
+  font-variant-numeric: tabular-nums;
+}
+.statusbar p { margin: 0; }
+.chip {
+  display: inline-block;
+  width: .8em;
+  height: .8em;
+  border-radius: 50%;
+  margin-right: .35em;
+  vertical-align: -.05em;
+  border: 1px solid var(--felt-line);
+}
+.chip.black { background: #10130f; }
+.chip.white { background: #f7f5ee; }
+
+.board {
+  display: grid;
+  grid-template-columns: repeat(8, 1fr);
+  gap: 2px;
+  background: var(--felt-line);
+  border: 3px solid var(--felt-line);
+  border-radius: 4px;
+  width: min(100%, 30rem);
+  aspect-ratio: 1;
+}
+
+.cell {
+  all: unset;
+  background: var(--felt);
+  display: grid;
+  place-items: center;
+  aspect-ratio: 1;
+  cursor: default;
+  position: relative;
+}
+.cell[data-legal="yes"] { cursor: pointer; }
+.cell[data-legal="yes"]::after {
+  content: "";
+  width: 22%;
+  height: 22%;
+  border-radius: 50%;
+  background: #ffffff44;
+}
+.cell[data-legal="yes"]:hover { background: #3b8256; }
+.cell:focus-visible { outline: 3px solid var(--accent); outline-offset: -3px; }
+.cell[data-disc="black"]::after,
+.cell[data-disc="white"]::after {
+  content: "";
+  width: 76%;
+  height: 76%;
+  border-radius: 50%;
+  box-shadow: 0 1px 2px #0006;
+}
+.cell[data-disc="black"]::after { background: #10130f; }
+.cell[data-disc="white"]::after { background: #f7f5ee; }
+
+.outcome {
+  font-size: 1.2rem;
+  font-weight: 700;
+  margin: .8rem 0 0;
+}
+.hint { color: var(--muted); margin: .4rem 0; }
+.error {
+  margin: .6rem 0;
+  padding: .6rem .8rem;
+  border-left: 4px solid var(--accent);
+  background: var(--panel);
+}
+.pending { margin: .6rem 0; padding: .6rem .8rem; background: var(--panel); border: 1px solid var(--line); }
+.pending p { margin: 0 0 .4rem; }
+.autolog { margin: .6rem 0; }
+.autolog ul { margin: 0; padding-left: 1.2rem; color: var(--muted); }
+
+label {
+  display: block;
+  font-size: .82rem;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin: .8rem 0 .2rem;
+}
+
+textarea {
+  width: 100%;
+  font: 13px/1.4 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  padding: .5rem .6rem;
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  background: var(--panel);
+  color: var(--ink);
+  resize: vertical;
+  word-break: break-all;
+}
+
+.controls { display: flex; flex-wrap: wrap; gap: .5rem; align-items: center; margin: .6rem 0; }
+
+button {
+  font: inherit;
+  font-size: .92rem;
+  padding: .4rem .9rem;
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  background: var(--panel);
+  color: var(--ink);
+  cursor: pointer;
+}
+button:hover { border-color: var(--accent); }
+button:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+
+.muted { color: var(--muted); font-size: .93rem; }
+
+ul { max-width: 38rem; }
+li { margin: .3rem 0; }
+
+details summary { cursor: pointer; font-weight: 700; margin: .4rem 0; }
+
+footer {
+  border-top: 1px solid var(--line);
+  margin-top: 2.5rem;
+  padding-top: .8rem;
+  color: var(--muted);
+  font-size: .9rem;
+}
+a { color: inherit; }
+</style>
+</head>
+<body>
+<main>
+
+<header>
+  <h1>Passing Notes</h1>
+  <p class="lede">Reversi for two people, with nothing in the middle. Play a move, copy the link,
+  paste it wherever you already talk to each other. There is no server, no account and no
+  hosting bill, because the entire game travels inside the link.</p>
+  <p class="lede">Save this page to disk and it still works. Everything you need is in this one
+  file, and it never asks the network for anything.</p>
+</header>
+
+<section id="game" aria-label="the board">
+  <div class="statusbar">
+    <p class="score"><span class="chip black"></span><strong id="score-black">2</strong> black</p>
+    <p class="score"><span class="chip white"></span><strong id="score-white">2</strong> white</p>
+    <p class="turn">to move: <strong id="turn">black</strong>
+      (<span id="legal-count">4</span> legal moves)</p>
+  </div>
+
+  <div id="board" class="board" role="grid" aria-label="Reversi board"></div>
+
+  <p id="outcome" class="outcome" data-winner="none" hidden></p>
+  <p id="hint" class="hint"></p>
+  <p id="error" class="error" role="alert" hidden></p>
+
+  <div id="pending" class="pending" hidden>
+    <p>If you are sure this is the game you want, you can take it and forget what you had.</p>
+    <textarea id="pending-code" rows="2" readonly aria-label="the refused code"></textarea>
+    <button type="button" id="accept-anyway">Take this link anyway</button>
+  </div>
+
+  <div id="autolog-wrap" class="autolog" hidden>
+    <h3>Played for you</h3>
+    <ul id="autolog"></ul>
+  </div>
+</section>
+
+<section aria-label="send your move">
+  <h2>Your turn is over, send this</h2>
+  <label for="link">The link</label>
+  <textarea id="link" rows="3" readonly spellcheck="false"></textarea>
+  <label for="code">The code on its own, if the link is awkward to paste</label>
+  <textarea id="code" rows="2" readonly spellcheck="false"></textarea>
+  <p class="controls">
+    <button type="button" id="copy-link">Copy the link</button>
+    <button type="button" id="copy-code">Copy the code</button>
+    <button type="button" id="new">Start over</button>
+    <span id="copy-status" class="muted" role="status"></span>
+  </p>
+  <p class="muted">
+    The link is <strong id="link-length">0</strong> characters and the code inside it is
+    <strong id="code-length">0</strong>. That
+    <strong id="code-fit">fits</strong>.
+    No legal game of Reversi can ever need more than <strong id="bound-chars">52</strong>
+    characters of code, because there are at most <strong id="bound-bits">274</strong> bits of
+    choice in the whole game. This is a bound, not a measurement, so the link cannot quietly
+    outgrow what your chat app will carry.
+  </p>
+  <p class="muted">
+    <strong id="digit-count">0</strong> of the <strong id="ply-count">0</strong> moves played so
+    far are actually written in the code. The other <strong id="auto-count">0</strong> were
+    forced, so the reader works them out instead of being told.
+  </p>
+</section>
+
+<section aria-label="receive their move">
+  <h2>They sent you one, paste it here</h2>
+  <label for="paste">Their link or their code</label>
+  <textarea id="paste" rows="3" spellcheck="false" placeholder="paste here"></textarea>
+  <p class="controls"><button type="button" id="load">Load their move</button></p>
+  <p class="muted">
+    Rewind guard: <strong id="storage-state">off</strong>. <span id="storage-why"></span>
+  </p>
+</section>
+
+<section aria-label="how this works">
+  <h2>What is actually going on</h2>
+  <p>At every turn you pick one of the legal moves, so your choice is worth
+  log2(number of legal moves) bits and nothing more. The code is the whole game written as one
+  number in a mixed radix, where each digit's radix is how many moves were legal at that point.</p>
+  <ul>
+    <li>A position with only one legal move costs zero bits. So do passes. Your opponent's
+    browser works those out from the rules rather than being told.</li>
+    <li>Reading digit <em>k</em> requires replaying moves 0 to <em>k</em>-1 and generating the
+    legal moves at that position, so a mangled code cannot decode into an illegal position. It
+    either fails the checksum or turns into some other legal game.</li>
+    <li>That is legality, and it is not honesty. Whoever holds the state can hand back a legal
+    game that rewinds their blunder. The rewind guard above is the answer, and it only works
+    where the browser lets this page remember things.</li>
+  </ul>
+</section>
+
+<section aria-label="live mode">
+  <h2>Live mode, and why it is not the default</h2>
+  <details>
+    <summary>WebRTC with the signalling done by hand</summary>
+    <p class="muted">WebRTC available here: <strong id="rtc-supported">no</strong>.
+      Serverless in this configuration: <strong id="rtc-serverless">yes</strong>.</p>
+    <p class="muted" id="rtc-honesty"></p>
+    <p>One of you presses Make an offer and sends the blob. The other pastes it, presses
+    Answer, and sends the reply back. The first player pastes that and the two browsers talk
+    directly. After that, moves travel by themselves.</p>
+    <label for="rtc-out">Blob to send</label>
+    <textarea id="rtc-out" rows="3" readonly spellcheck="false"></textarea>
+    <label for="rtc-in">Blob you were sent</label>
+    <textarea id="rtc-in" rows="3" spellcheck="false"></textarea>
+    <p class="controls">
+      <button type="button" id="rtc-offer">Make an offer</button>
+      <button type="button" id="rtc-answer">Answer their offer</button>
+      <button type="button" id="rtc-accept">Accept their answer</button>
+    </p>
+    <p class="muted" id="rtc-status" role="status"></p>
+  </details>
+</section>
+
+<footer>
+  <p>Reversi on a courier that knows nothing about Reversi. The courier is the reusable part.
+  Source and the write up:
+  <a href="https://github.com/JesseRWeigel/passing-notes">github.com/JesseRWeigel/passing-notes</a>.
+  One of a public catalog of build ideas:
+  <a href="https://github.com/JesseRWeigel/722-things-to-build">722-things-to-build</a>.</p>
+</footer>
+
+</main>
+<script>
+'use strict';
+(function () {
+/* ---- src/courier.mjs ---- */
+/* The courier. It carries a whole game between two people with nothing in the middle.
+ *
+ * The idea in one paragraph. A game is a deterministic function from a move history to a
+ * position, so the history IS the state, and a history of choices can be written down far
+ * more tightly than a board can. At every turn the player is choosing one of R legal moves,
+ * so that choice is worth exactly log2(R) bits, and the whole game is one integer in a
+ * mixed radix where the radices are the branching factors. Nothing else needs to travel.
+ *
+ * Three consequences fall out of that, and they are the reason this file exists.
+ *
+ *   1. A position where only one move is legal costs ZERO bits, because R is 1. Forced moves
+ *      and forced passes are re derived by the reader instead of being sent. In Reversi that
+ *      is a real saving, not a curiosity, because endgames are full of them.
+ *
+ *   2. The reader cannot decode digit k without first replaying moves 0..k-1 and generating
+ *      the legal move list at that position. So a corrupted or invented code does not decode
+ *      into an illegal position. It decodes into some OTHER legal game, or it fails. There is
+ *      no way to smuggle an illegal move through this channel. See the honesty note below for
+ *      what this does not give you.
+ *
+ *   3. The length is bounded by the rules, in advance. If every ply has at most B_k legal
+ *      moves then the code can never be longer than log2(prod B_k) bits, whatever the players
+ *      do. For a game with a bound, a link that gets too long to send is impossible rather
+ *      than unlikely. See codeLengthBound.
+ *
+ * HONESTY NOTE. This guarantees legality, and it does not guarantee honesty. Your opponent
+ * holds the state, so they can hand you back a legal game that is not the one you played,
+ * for example by rewinding to before their blunder. That is what Session.extendsFrom is for:
+ * keep your own longest known digit list and refuse anything that is not an extension of it.
+ * Without a shared secret there is no way to do better, and this file does not pretend to.
+ *
+ * A game plugs in by supplying the adapter described in ADAPTER.md. This file knows nothing
+ * about Reversi.
+ */
+
+const CODEC_VERSION = 1;
+
+// A conservative default. See docs in README: 280 is one post on X, 160 is one GSM-7 SMS
+// segment, and 2083 was the old Internet Explorer address bar limit that still shows up in
+// odd places. 512 leaves room for the page URL in front of the code.
+const DEFAULT_MAX_CODE = 512;
+
+class CourierError extends Error {
+  constructor(code, message, detail = {}) {
+    super(message);
+    this.name = 'CourierError';
+    this.code = code;
+    Object.assign(this, detail);
+  }
+}
+
+/* ---------------------------------------------------------------- base64url
+
+   Hand rolled so the same code runs in Node and in a browser opened from a file, with no
+   atob/btoa differences and no padding to be mangled by a chat app that thinks '=' ends a
+   URL. Unpadded, URL safe, and it rejects anything outside its own alphabet loudly.
+*/
+const B64 = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_';
+const B64_INV = (() => {
+  const m = new Map();
+  for (let i = 0; i < B64.length; i++) m.set(B64[i], i);
+  return m;
+})();
+
+function bytesToB64url(bytes) {
+  let out = '';
+  for (let i = 0; i < bytes.length; i += 3) {
+    const a = bytes[i];
+    const b = i + 1 < bytes.length ? bytes[i + 1] : 0;
+    const c = i + 2 < bytes.length ? bytes[i + 2] : 0;
+    const n = (a << 16) | (b << 8) | c;
+    const chunk = bytes.length - i;
+    out += B64[(n >> 18) & 63] + B64[(n >> 12) & 63];
+    if (chunk > 1) out += B64[(n >> 6) & 63];
+    if (chunk > 2) out += B64[n & 63];
+  }
+  return out;
+}
+
+function b64urlToBytes(str) {
+  if (str.length % 4 === 1) {
+    throw new CourierError('BAD_FORMAT', `a code cannot be ${str.length} characters long`);
+  }
+  const out = [];
+  for (let i = 0; i < str.length; i += 4) {
+    const chunk = Math.min(4, str.length - i);
+    let n = 0;
+    for (let j = 0; j < 4; j++) {
+      const ch = j < chunk ? str[i + j] : 'A';
+      const v = B64_INV.get(ch);
+      if (v === undefined) {
+        throw new CourierError('BAD_FORMAT', `the code contains ${JSON.stringify(ch)}, which is not part of a code`);
+      }
+      n = (n << 6) | v;
+    }
+    out.push((n >> 16) & 255);
+    if (chunk > 2) out.push((n >> 8) & 255);
+    if (chunk > 3) out.push(n & 255);
+  }
+  return Uint8Array.from(out);
+}
+
+/* CRC-16/CCITT-FALSE. Not security, just a loud complaint when a chat app truncates the link
+   or somebody drops a character while copying. Without it a short code decodes silently into
+   a shorter, wrong, perfectly legal game. */
+function crc16(bytes) {
+  let crc = 0xffff;
+  for (const b of bytes) {
+    crc ^= b << 8;
+    for (let i = 0; i < 8; i++) {
+      crc = crc & 0x8000 ? ((crc << 1) ^ 0x1021) & 0xffff : (crc << 1) & 0xffff;
+    }
+  }
+  return crc;
+}
+
+function bigToBytes(n) {
+  if (n < 1n) throw new CourierError('INTERNAL', 'the accumulator went below its sentinel');
+  const out = [];
+  let v = n;
+  while (v > 0n) {
+    out.push(Number(v & 0xffn));
+    v >>= 8n;
+  }
+  out.reverse();
+  return Uint8Array.from(out);
+}
+
+function bytesToBig(bytes) {
+  let n = 0n;
+  for (const b of bytes) n = (n << 8n) | BigInt(b);
+  return n;
+}
+
+function concat(...arrays) {
+  const total = arrays.reduce((n, a) => n + a.length, 0);
+  const out = new Uint8Array(total);
+  let at = 0;
+  for (const a of arrays) {
+    out.set(a, at);
+    at += a.length;
+  }
+  return out;
+}
+
+/* ---------------------------------------------------------------- the frame
+
+   [version][gameId][payload big endian][crc16 of everything before it]
+*/
+function packDigits(game, digits, { maxCodeLength = DEFAULT_MAX_CODE } = {}) {
+  let acc = 1n; // the sentinel is what makes the digit count self delimiting
+  for (let k = digits.length - 1; k >= 0; k--) {
+    const [radix, index] = digits[k];
+    if (!(radix >= 2)) {
+      throw new CourierError('INTERNAL', `a digit with radix ${radix} carries no information and must not be recorded`);
+    }
+    if (!(index >= 0 && index < radix)) {
+      throw new CourierError('INTERNAL', `digit index ${index} is outside its radix ${radix}`);
+    }
+    acc = acc * BigInt(radix) + BigInt(index);
+  }
+  const body = concat(Uint8Array.from([CODEC_VERSION, game.id]), bigToBytes(acc));
+  const sum = crc16(body);
+  const code = bytesToB64url(concat(body, Uint8Array.from([(sum >> 8) & 255, sum & 255])));
+  if (code.length > maxCodeLength) {
+    throw new CourierError(
+      'CODE_TOO_LONG',
+      `this game needs a ${code.length} character code and the limit is ${maxCodeLength}. ` +
+        'Nothing was truncated. Raise maxCodeLength or use a different transport.',
+      { length: code.length, limit: maxCodeLength },
+    );
+  }
+  return code;
+}
+
+function unpack(code) {
+  const bytes = b64urlToBytes(code);
+  if (bytes.length < 5) {
+    throw new CourierError('BAD_FORMAT', `a code is at least 5 bytes and this one is ${bytes.length}`);
+  }
+  const body = bytes.subarray(0, bytes.length - 2);
+  const want = (bytes[bytes.length - 2] << 8) | bytes[bytes.length - 1];
+  const got = crc16(body);
+  if (want !== got) {
+    throw new CourierError(
+      'CHECKSUM_MISMATCH',
+      'this code did not survive the trip. It was cut short or a character was changed. ' +
+        'Ask for it again rather than guessing.',
+      { want, got },
+    );
+  }
+  return { version: body[0], gameId: body[1], acc: bytesToBig(body.subarray(2)) };
+}
+
+/* ---------------------------------------------------------------- forced play
+
+   Advance through every position that offers the mover no choice at all. A position with no
+   legal move is a pass, a position with exactly one is that move. Neither carries a bit, so
+   both sides derive them the same way and neither is transmitted.
+*/
+function advance(game, state) {
+  const auto = [];
+  let s = state;
+  for (let guard = 0; ; guard++) {
+    if (guard > game.maxPlies) {
+      throw new CourierError('NO_PROGRESS', `${game.name} did not reach an end within ${game.maxPlies} plies`);
+    }
+    if (game.isOver(s)) return { state: s, auto };
+    const legal = game.legalMoves(s);
+    if (legal.length === 0) {
+      auto.push({ kind: 'pass', by: game.mover(s) });
+      s = game.pass(s);
+    } else if (legal.length === 1) {
+      auto.push({ kind: 'forced', move: legal[0], by: game.mover(s) });
+      s = game.apply(s, legal[0]);
+    } else {
+      return { state: s, auto };
+    }
+  }
+}
+
+/* ---------------------------------------------------------------- the session */
+class Session {
+  constructor(game, opts = {}) {
+    this.game = game;
+    this.opts = opts;
+    this.digits = [];
+    this.history = [];
+    this.state = game.initial();
+    this._settle();
+  }
+
+  _settle() {
+    const { state, auto } = advance(this.game, this.state);
+    this.state = state;
+    this.history.push(...auto);
+  }
+
+  get over() {
+    return this.game.isOver(this.state);
+  }
+
+  legalMoves() {
+    return this.game.isOver(this.state) ? [] : this.game.legalMoves(this.state);
+  }
+
+  play(move) {
+    if (this.game.isOver(this.state)) {
+      throw new CourierError('GAME_OVER', 'the game has ended, there is nothing left to play');
+    }
+    const legal = this.game.legalMoves(this.state);
+    const index = legal.findIndex((m) => this.game.eq(m, move));
+    if (index < 0) {
+      throw new CourierError('ILLEGAL_MOVE', `${this.game.moveName(move)} is not a legal move here`, { move });
+    }
+    // A radix of one is a forced move, which advance() already played. Reaching here with
+    // legal.length === 1 would mean _settle did not run, so treat it as a bug, not a digit.
+    if (legal.length < 2) {
+      throw new CourierError('INTERNAL', 'a forced position was left for the player to play');
+    }
+    const by = this.game.mover(this.state);
+    this.digits.push([legal.length, index]);
+    this.state = this.game.apply(this.state, legal[index]);
+    this.history.push({ kind: 'move', move: legal[index], by });
+    this._settle();
+    return this;
+  }
+
+  get code() {
+    return packDigits(this.game, this.digits, this.opts);
+  }
+
+  link(base) {
+    const at = String(base).split('#')[0];
+    return `${at}#g=${this.code}`;
+  }
+
+  /* True when other is this session's past, so this session may replace it. Equal counts.
+     Used to refuse a link that quietly rewinds the game. */
+  extendsFrom(otherDigits) {
+    if (otherDigits.length > this.digits.length) return false;
+    for (let i = 0; i < otherDigits.length; i++) {
+      if (otherDigits[i][0] !== this.digits[i][0] || otherDigits[i][1] !== this.digits[i][1]) return false;
+    }
+    return true;
+  }
+
+  static fromCode(game, code, opts = {}) {
+    const clean = String(code).trim().replace(/^.*#g=/s, '').replace(/\s+/g, '');
+    if (clean === '') throw new CourierError('BAD_FORMAT', 'there is no code here');
+    const { version, gameId, acc } = unpack(clean);
+    if (version !== CODEC_VERSION) {
+      throw new CourierError('BAD_VERSION', `this code is format ${version} and this page speaks format ${CODEC_VERSION}`);
+    }
+    if (gameId !== game.id) {
+      throw new CourierError('WRONG_GAME', `this code is for game ${gameId}, not ${game.name}`);
+    }
+    const s = new Session(game, opts);
+    let a = acc;
+    while (a > 1n) {
+      if (game.isOver(s.state)) {
+        throw new CourierError('TRAILING_DATA', 'this code carries moves that come after the game ended');
+      }
+      const legal = game.legalMoves(s.state);
+      const radix = BigInt(legal.length);
+      const index = Number(a % radix);
+      a = a / radix;
+      const by = game.mover(s.state);
+      s.digits.push([legal.length, index]);
+      s.state = game.apply(s.state, legal[index]);
+      s.history.push({ kind: 'move', move: legal[index], by });
+      s._settle();
+    }
+    return s;
+  }
+}
+
+/* ---------------------------------------------------------------- the length bound
+
+   The point of this function is that a caller can know, before a single move is played,
+   the longest link the game can ever produce. A transport that cannot carry that number is
+   the wrong transport, and you find out at the start rather than at move 40.
+*/
+function codeLengthBound(game) {
+  const log2Product = game.branchBoundLog2();
+  const bits = Math.ceil(log2Product) + 1; // +1 for the sentinel: acc < 2 * product
+  const payloadBytes = Math.ceil(bits / 8);
+  const bytes = payloadBytes + 4; // version, game id, two checksum bytes
+  return {
+    bits,
+    bytes,
+    chars: Math.ceil((bytes * 4) / 3),
+    note: `${game.name}: at most ${bits} bits of choice in any legal game`,
+  };
+}
+
+/* ---- src/reversi.mjs ---- */
+/* Reversi, as the one finished game sitting on top of the courier.
+ *
+ * Standard 8x8 Othello opening and rules. Black moves first. A move must flip at least one
+ * disc. A player with no legal move passes. When neither player has a legal move the game
+ * ends and the player with more discs wins, equal counts being a draw.
+ *
+ * Two things here exist for the courier's benefit and are worth calling out.
+ *
+ * legalMoves returns cells in ascending index order, always. The courier writes down the
+ * INDEX of the chosen move within that list, so both sides must build the list in the same
+ * order or every code after the first branching position decodes into a different game.
+ * The ordering is part of the wire format.
+ *
+ * branchBoundLog2 is a proof obligation, not an estimate. A legal move is always an empty
+ * cell, and the board starts with 60 empty cells and loses exactly one per placement, so
+ * the number of legal moves at the k-th placement is at most 60 - k. The product over a
+ * whole game is therefore at most 60 factorial, whatever the players do.
+ */
+
+const EMPTY = 0;
+const BLACK = 1;
+const WHITE = 2;
+
+const DIRS = [-9, -8, -7, -1, 1, 7, 8, 9];
+const CELLS = 64;
+const PLACEABLE = 60; // 64 cells less the four the opening puts on the board
+
+function inBounds(from, to, step) {
+  if (to < 0 || to >= CELLS) return false;
+  const fromCol = from % 8;
+  const toCol = to % 8;
+  // A step that changes the column by more than one has wrapped around a row edge.
+  if (step === -1 || step === 7 || step === -9) return toCol === fromCol - 1;
+  if (step === 1 || step === -7 || step === 9) return toCol === fromCol + 1;
+  return toCol === fromCol;
+}
+
+function initialCells() {
+  const cells = new Uint8Array(CELLS);
+  cells[27] = WHITE;
+  cells[28] = BLACK;
+  cells[35] = BLACK;
+  cells[36] = WHITE;
+  return cells;
+}
+
+function opponent(colour) {
+  return colour === BLACK ? WHITE : BLACK;
+}
+
+/* Every disc this move would flip, in every direction. Empty means the move is not legal. */
+function flipsFor(cells, cell, colour) {
+  if (cells[cell] !== EMPTY) return [];
+  const foe = opponent(colour);
+  const out = [];
+  for (const step of DIRS) {
+    const run = [];
+    let at = cell;
+    for (;;) {
+      const next = at + step;
+      if (!inBounds(at, next, step)) {
+        run.length = 0;
+        break;
+      }
+      if (cells[next] === foe) {
+        run.push(next);
+        at = next;
+        continue;
+      }
+      if (cells[next] === colour && run.length > 0) break;
+      run.length = 0;
+      break;
+    }
+    for (const c of run) out.push(c);
+  }
+  return out;
+}
+
+function movesFor(cells, colour) {
+  const out = [];
+  for (let cell = 0; cell < CELLS; cell++) {
+    if (cells[cell] !== EMPTY) continue;
+    if (flipsFor(cells, cell, colour).length > 0) out.push(cell);
+  }
+  return out;
+}
+
+function countDiscs(cells) {
+  let black = 0;
+  let white = 0;
+  let empty = 0;
+  for (const c of cells) {
+    if (c === BLACK) black++;
+    else if (c === WHITE) white++;
+    else empty++;
+  }
+  return { black, white, empty };
+}
+
+function cellName(cell) {
+  return 'abcdefgh'[cell % 8] + String(Math.floor(cell / 8) + 1);
+}
+
+function cellFromName(name) {
+  const col = 'abcdefgh'.indexOf(String(name)[0]);
+  const row = Number(String(name).slice(1)) - 1;
+  if (col < 0 || !(row >= 0 && row < 8)) return -1;
+  return row * 8 + col;
+}
+
+const LOG2_60_FACTORIAL = (() => {
+  let bits = 0;
+  for (let i = 2; i <= PLACEABLE; i++) bits += Math.log2(i);
+  return bits;
+})();
+
+const reversi = {
+  id: 1,
+  name: 'Reversi',
+  maxPlies: 200,
+
+  initial() {
+    return { cells: initialCells(), turn: BLACK };
+  },
+
+  mover(state) {
+    return state.turn;
+  },
+
+  legalMoves(state) {
+    return movesFor(state.cells, state.turn);
+  },
+
+  apply(state, move) {
+    const flips = flipsFor(state.cells, move, state.turn);
+    if (flips.length === 0) {
+      throw new Error(`${cellName(move)} flips nothing, so it is not a legal move`);
+    }
+    const cells = Uint8Array.from(state.cells);
+    cells[move] = state.turn;
+    for (const c of flips) cells[c] = state.turn;
+    return { cells, turn: opponent(state.turn) };
+  },
+
+  pass(state) {
+    if (movesFor(state.cells, state.turn).length > 0) {
+      throw new Error('a player with a legal move may not pass');
+    }
+    return { cells: state.cells, turn: opponent(state.turn) };
+  },
+
+  isOver(state) {
+    if (movesFor(state.cells, state.turn).length > 0) return false;
+    return movesFor(state.cells, opponent(state.turn)).length === 0;
+  },
+
+  eq(a, b) {
+    return a === b;
+  },
+
+  moveName(move) {
+    return cellName(move);
+  },
+
+  score(state) {
+    return countDiscs(state.cells);
+  },
+
+  /* 0 for a draw, otherwise the winning colour. Only meaningful once isOver. */
+  winner(state) {
+    const { black, white } = countDiscs(state.cells);
+    if (black === white) return 0;
+    return black > white ? BLACK : WHITE;
+  },
+
+  branchBoundLog2() {
+    return LOG2_60_FACTORIAL;
+  },
+};
+
+/* ---- src/rtc.mjs ---- */
+/* Optional live mode: WebRTC with the signalling done by hand.
+ *
+ * READ THIS BEFORE BELIEVING THE WORD "SERVERLESS".
+ *
+ * The link transport in courier.mjs touches no network at all. This file does. WebRTC needs
+ * to learn an address it can be reached on, and it has exactly two ways to do that:
+ *
+ *   HOST CANDIDATES. The addresses the machine already knows it has. These need no server and
+ *   they work when both players are on the same local network. They are useless across the
+ *   internet, because the address behind a home router is not reachable from outside it.
+ *
+ *   SERVER REFLEXIVE CANDIDATES. What a STUN server tells you your public address is. This is
+ *   a server. It is somebody else's machine, it can go away, and it sees that you connected.
+ *   It carries no game data, and it is still a server, so a page configured with one is not
+ *   "no server at all" and this code will not let you claim otherwise. Call rtcHonesty() and
+ *   put what it returns in front of the user.
+ *
+ * Even with STUN, two peers behind symmetric NAT cannot connect without a TURN relay, which
+ * is a server that does carry your data. There is no configuration of WebRTC that connects
+ * every pair of people with no infrastructure. The link transport has no such asterisk, which
+ * is why it is the default here and this is the extra.
+ *
+ * The signalling itself is genuinely serverless: the offer and the answer are text you copy
+ * into whatever chat app you already use.
+ */
+
+const RTC_SIGNAL_VERSION = 1;
+
+function rtcSupported(scope = globalThis) {
+  return typeof scope.RTCPeerConnection === 'function';
+}
+
+/* What the page must tell the user, given how it is configured. Deliberately returns prose
+   rather than a boolean, because "is this serverless" has a longer answer than yes or no. */
+function rtcHonesty(iceServers = []) {
+  if (!iceServers || iceServers.length === 0) {
+    return {
+      serverless: true,
+      summary: 'No ICE servers are configured, so this uses local network addresses only. ' +
+        'It connects when both players are on the same network and it will not connect across the internet.',
+    };
+  }
+  const hosts = iceServers.flatMap((s) => (Array.isArray(s.urls) ? s.urls : [s.urls])).filter(Boolean);
+  return {
+    serverless: false,
+    summary: `This is configured with ${hosts.length} ICE server(s): ${hosts.join(', ')}. ` +
+      'Those are servers. They carry no game data and they do see that you connected, so a page ' +
+      'in this configuration is not serverless.',
+  };
+}
+
+const SIGNAL_PLAIN = 'p';
+const SIGNAL_GZIP = 'z';
+
+function toB64(bytes) {
+  let bin = '';
+  for (const b of bytes) bin += String.fromCharCode(b);
+  return btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+
+function fromB64(text) {
+  const padded = text.replace(/-/g, '+').replace(/_/g, '/');
+  const bin = atob(padded + '='.repeat((4 - (padded.length % 4)) % 4));
+  return Uint8Array.from(bin, (c) => c.charCodeAt(0));
+}
+
+/* An SDP blob is mostly repeated boilerplate, so gzip earns its keep here. When the browser
+   has no CompressionStream the blob goes out uncompressed under a different prefix, and the
+   reader can tell which it got. A silent fallback would make the size measurement a lie. */
+async function packSignal(obj, scope = globalThis) {
+  const text = JSON.stringify(obj);
+  const raw = new TextEncoder().encode(text);
+  if (typeof scope.CompressionStream !== 'function') return SIGNAL_PLAIN + toB64(raw);
+  const stream = new Blob([raw]).stream().pipeThrough(new scope.CompressionStream('gzip'));
+  const packed = new Uint8Array(await new Response(stream).arrayBuffer());
+  return SIGNAL_GZIP + toB64(packed);
+}
+
+async function unpackSignal(blob, scope = globalThis) {
+  const trimmed = String(blob).trim().replace(/\s+/g, '');
+  const kind = trimmed[0];
+  const body = fromB64(trimmed.slice(1));
+  if (kind === SIGNAL_PLAIN) return JSON.parse(new TextDecoder().decode(body));
+  if (kind !== SIGNAL_GZIP) throw new Error('this does not look like a connection blob');
+  if (typeof scope.DecompressionStream !== 'function') {
+    throw new Error('this blob is compressed and this browser cannot decompress it');
+  }
+  const stream = new Blob([body]).stream().pipeThrough(new scope.DecompressionStream('gzip'));
+  return JSON.parse(await new Response(stream).text());
+}
+
+function gathered(pc) {
+  return new Promise((resolve) => {
+    if (pc.iceGatheringState === 'complete') return resolve();
+    const check = () => {
+      if (pc.iceGatheringState === 'complete') {
+        pc.removeEventListener('icegatheringstatechange', check);
+        resolve();
+      }
+    };
+    pc.addEventListener('icegatheringstatechange', check);
+  });
+}
+
+/* One side of a hand signalled peer connection. The host calls offer() then accept(answer).
+   The guest calls answer(offerBlob). Both then use send() and onMessage. */
+class ManualPeer {
+  constructor({ iceServers = [], scope = globalThis } = {}) {
+    if (!rtcSupported(scope)) throw new Error('this browser has no WebRTC');
+    this.scope = scope;
+    this.iceServers = iceServers;
+    this.pc = new scope.RTCPeerConnection({ iceServers });
+    this.channel = null;
+    this.onMessage = () => {};
+    this.onOpen = () => {};
+    this.onState = () => {};
+    this.pc.addEventListener('connectionstatechange', () => this.onState(this.pc.connectionState));
+  }
+
+  _wire(channel) {
+    this.channel = channel;
+    channel.addEventListener('open', () => this.onOpen());
+    channel.addEventListener('message', (e) => {
+      let parsed;
+      try {
+        parsed = JSON.parse(e.data);
+      } catch {
+        // A peer sending something we cannot parse is a real event, so it is reported
+        // rather than dropped. Silence here would look exactly like an idle connection.
+        this.onMessage({ kind: 'unparseable', raw: String(e.data).slice(0, 200) });
+        return;
+      }
+      this.onMessage(parsed);
+    });
+  }
+
+  async offer() {
+    this._wire(this.pc.createDataChannel('passing-notes', { ordered: true }));
+    await this.pc.setLocalDescription(await this.pc.createOffer());
+    await gathered(this.pc);
+    return packSignal(
+      { v: RTC_SIGNAL_VERSION, role: 'offer', sdp: this.pc.localDescription.sdp },
+      this.scope,
+    );
+  }
+
+  async answer(offerBlob) {
+    const signal = await unpackSignal(offerBlob, this.scope);
+    if (signal.role !== 'offer') throw new Error('that blob is not an offer');
+    this.pc.addEventListener('datachannel', (e) => this._wire(e.channel));
+    await this.pc.setRemoteDescription({ type: 'offer', sdp: signal.sdp });
+    await this.pc.setLocalDescription(await this.pc.createAnswer());
+    await gathered(this.pc);
+    return packSignal(
+      { v: RTC_SIGNAL_VERSION, role: 'answer', sdp: this.pc.localDescription.sdp },
+      this.scope,
+    );
+  }
+
+  async accept(answerBlob) {
+    const signal = await unpackSignal(answerBlob, this.scope);
+    if (signal.role !== 'answer') throw new Error('that blob is not an answer');
+    await this.pc.setRemoteDescription({ type: 'answer', sdp: signal.sdp });
+  }
+
+  send(obj) {
+    if (!this.channel || this.channel.readyState !== 'open') {
+      throw new Error('the connection is not open');
+    }
+    this.channel.send(JSON.stringify(obj));
+  }
+
+  close() {
+    try {
+      this.pc.close();
+    } catch {
+      /* already closed */
+    }
+  }
+}
+
+/* ---- src/ui.mjs ---- */
+/* The page. Everything below runs from a file:// URL with the network unplugged. */
+
+const STORE_KEY = 'passing-notes/reversi/longest';
+
+// Real limits worth measuring a link against. Sources are in the README.
+const CARRIERS = [
+  { name: 'one GSM-7 SMS segment', limit: 160 },
+  { name: 'one post on X', limit: 280 },
+  { name: 'a QR code a phone reads across a table (version 10-L, alphanumeric)', limit: 395 },
+  { name: 'the old Internet Explorer address bar', limit: 2083 },
+];
+
+const el = (id) => document.getElementById(id);
+
+/* localStorage throws on a file:// origin in Chrome. That is a fine thing to happen and a
+   terrible thing to swallow, because the rewind guard silently stops working. The state is
+   reported on the page either way. */
+function openStore() {
+  try {
+    const probe = '__probe__';
+    globalThis.localStorage.setItem(probe, '1');
+    globalThis.localStorage.removeItem(probe);
+    return {
+      ok: true,
+      read: () => globalThis.localStorage.getItem(STORE_KEY),
+      write: (v) => globalThis.localStorage.setItem(STORE_KEY, v),
+      clear: () => globalThis.localStorage.removeItem(STORE_KEY),
+    };
+  } catch (err) {
+    const why = String(err && err.name ? err.name : err);
+    return { ok: false, why, read: () => null, write: () => {}, clear: () => {} };
+  }
+}
+
+function describeFit(length) {
+  const fits = CARRIERS.filter((c) => length <= c.limit);
+  if (fits.length === 0) return `longer than every limit we measured against (${CARRIERS[CARRIERS.length - 1].limit})`;
+  return `fits ${fits[0].name} (${fits[0].limit})`;
+}
+
+function startApp(opts = {}) {
+  const game = opts.game;
+  const store = openStore();
+  let session = null;
+  let selfWrittenHash = null;
+  let lastAuto = [];
+
+  el('storage-state').textContent = store.ok ? 'on' : 'off';
+  el('storage-why').textContent = store.ok
+    ? 'Your browser lets this page remember the longest game it has seen, so a link that rewinds the game is refused.'
+    : `This browser refuses storage for this page (${store.why}), which is normal for a file opened from disk. ` +
+      'The rewind guard is OFF. Everything else works.';
+
+  const bound = opts.codeLengthBound(game);
+  el('bound-chars').textContent = String(bound.chars);
+  el('bound-bits').textContent = String(bound.bits);
+
+  function showError(message) {
+    el('error').textContent = message;
+    el('error').hidden = message === '';
+  }
+
+  function setPending(code) {
+    el('pending').hidden = code === null;
+    el('pending-code').value = code === null ? '' : code;
+  }
+
+  function render() {
+    const state = session.state;
+    const legal = session.legalMoves();
+    const legalSet = new Set(legal);
+    const score = game.score(state);
+
+    for (let cell = 0; cell < 64; cell++) {
+      const button = el(`cell-${cell}`);
+      const disc = state.cells[cell];
+      button.dataset.disc = disc === 1 ? 'black' : disc === 2 ? 'white' : 'empty';
+      const playable = legalSet.has(cell);
+      button.dataset.legal = playable ? 'yes' : 'no';
+      button.disabled = !playable;
+      button.setAttribute(
+        'aria-label',
+        `${game.moveName(cell)}, ${button.dataset.disc}${playable ? ', legal move' : ''}`,
+      );
+    }
+
+    el('score-black').textContent = String(score.black);
+    el('score-white').textContent = String(score.white);
+    el('legal-count').textContent = String(legal.length);
+
+    if (session.over) {
+      const winner = game.winner(state);
+      el('turn').textContent = 'game over';
+      el('outcome').textContent =
+        winner === 0
+          ? `Draw, ${score.black} discs each.`
+          : `${winner === 1 ? 'Black' : 'White'} wins, ${Math.max(score.black, score.white)} to ${Math.min(score.black, score.white)}.`;
+      el('outcome').dataset.winner = winner === 0 ? 'draw' : winner === 1 ? 'black' : 'white';
+      el('outcome').hidden = false;
+    } else {
+      el('turn').textContent = state.turn === 1 ? 'black' : 'white';
+      el('outcome').hidden = true;
+      el('outcome').dataset.winner = 'none';
+      el('outcome').textContent = '';
+    }
+
+    const code = session.code;
+    const link = session.link(location.href);
+    el('code').value = code;
+    el('link').value = link;
+    el('code-length').textContent = String(code.length);
+    el('link-length').textContent = String(link.length);
+    el('code-fit').textContent = describeFit(link.length);
+    el('digit-count').textContent = String(session.digits.length);
+
+    // Every ply that is not a recorded decision was re-derived by the reader for free.
+    el('auto-count').textContent = String(session.history.length - session.digits.length);
+    el('ply-count').textContent = String(session.history.length);
+
+    const log = el('autolog');
+    log.textContent = '';
+    for (const event of lastAuto) {
+      const li = document.createElement('li');
+      const who = event.by === 1 ? 'Black' : 'White';
+      li.textContent =
+        event.kind === 'pass'
+          ? `${who} had no legal move and passed.`
+          : `${who} had only one legal move, ${game.moveName(event.move)}, so it was played automatically.`;
+      log.appendChild(li);
+    }
+    el('autolog-wrap').hidden = lastAuto.length === 0;
+
+    el('hint').textContent = session.over
+      ? 'Send the last link so they can see the finish.'
+      : `Copy the link and send it to whoever is playing ${state.turn === 1 ? 'Black' : 'White'}.`;
+
+    try {
+      history.replaceState(null, '', link);
+      selfWrittenHash = new URL(link).hash;
+    } catch {
+      // replaceState is refused on some file:// origins. Setting the fragment directly still
+      // works and only costs a history entry.
+      selfWrittenHash = `#g=${code}`;
+      location.hash = `g=${code}`;
+    }
+  }
+
+  function remember() {
+    if (!store.ok) return;
+    store.write(JSON.stringify(session.digits));
+  }
+
+  function storedDigits() {
+    if (!store.ok) return null;
+    const raw = store.read();
+    if (!raw) return null;
+    try {
+      const parsed = JSON.parse(raw);
+      return Array.isArray(parsed) ? parsed : null;
+    } catch {
+      return null;
+    }
+  }
+
+  function adopt(next, { auto = [] } = {}) {
+    session = next;
+    lastAuto = auto;
+    showError('');
+    setPending(null);
+    remember();
+    render();
+  }
+
+  function loadCode(code, { force = false, quiet = false } = {}) {
+    let next;
+    try {
+      next = opts.Session.fromCode(game, code, { maxCodeLength: opts.maxCodeLength });
+    } catch (err) {
+      showError(err && err.message ? err.message : String(err));
+      setPending(null);
+      return false;
+    }
+    const known = storedDigits();
+    if (!force && known && !next.extendsFrom(known)) {
+      showError(
+        `This link is not a continuation of the game you already have. It has ${next.digits.length} ` +
+          `decisions and yours has ${known.length}, and they disagree. Somebody rewound the game, or ` +
+          'this is a different game entirely.',
+      );
+      setPending(code);
+      return false;
+    }
+    const before = session ? session.history.length : 0;
+    const grew = !quiet && session && next.extendsFrom(session.digits);
+    const auto = grew ? next.history.slice(before) : [];
+    adopt(next, { auto: auto.filter((h) => h.kind !== 'move') });
+    return true;
+  }
+
+  function fresh() {
+    store.clear();
+    adopt(new opts.Session(game, { maxCodeLength: opts.maxCodeLength }));
+  }
+
+  // ---- board
+  const board = el('board');
+  for (let row = 0; row < 8; row++) {
+    for (let col = 0; col < 8; col++) {
+      const cell = row * 8 + col;
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = 'cell';
+      button.id = `cell-${cell}`;
+      button.dataset.cell = String(cell);
+      button.addEventListener('click', () => {
+        const before = session.history.length;
+        try {
+          session.play(cell);
+        } catch (err) {
+          showError(err && err.message ? err.message : String(err));
+          return;
+        }
+        lastAuto = session.history.slice(before).filter((h) => h.kind !== 'move');
+        showError('');
+        remember();
+        render();
+      });
+      board.appendChild(button);
+    }
+  }
+
+  el('load').addEventListener('click', () => {
+    const text = el('paste').value.trim();
+    if (text === '') {
+      showError('Paste the link or the code they sent you first.');
+      return;
+    }
+    if (loadCode(text)) el('paste').value = '';
+  });
+
+  el('accept-anyway').addEventListener('click', () => {
+    const code = el('pending-code').value;
+    store.clear();
+    if (loadCode(code, { force: true })) el('paste').value = '';
+  });
+
+  el('new').addEventListener('click', fresh);
+
+  for (const [buttonId, sourceId] of [
+    ['copy-link', 'link'],
+    ['copy-code', 'code'],
+  ]) {
+    el(buttonId).addEventListener('click', async () => {
+      const value = el(sourceId).value;
+      const status = el('copy-status');
+      try {
+        await navigator.clipboard.writeText(value);
+        status.textContent = 'copied';
+        return;
+      } catch {
+        /* fall through to the old way */
+      }
+      el(sourceId).select();
+      const worked = (() => {
+        try {
+          return document.execCommand('copy');
+        } catch {
+          return false;
+        }
+      })();
+      status.textContent = worked
+        ? 'copied'
+        : 'this browser would not let the page copy for you, the box is selected so press ctrl+C';
+    });
+  }
+
+  addEventListener('hashchange', () => {
+    if (location.hash === selfWrittenHash) return;
+    if (location.hash.startsWith('#g=')) loadCode(location.hash.slice(3));
+  });
+
+  // ---- live mode, deliberately behind a disclosure and off by default
+  const honesty = opts.rtcHonesty(opts.iceServers || []);
+  el('rtc-honesty').textContent = honesty.summary;
+  el('rtc-serverless').textContent = honesty.serverless ? 'yes' : 'no';
+  el('rtc-supported').textContent = opts.rtcSupported() ? 'yes' : 'no';
+
+  let peer = null;
+  const rtcSay = (message) => {
+    el('rtc-status').textContent = message;
+  };
+  const rtcPeer = () => {
+    if (!peer) {
+      peer = new opts.ManualPeer({ iceServers: opts.iceServers || [] });
+      peer.onState = (s) => rtcSay(`connection ${s}`);
+      peer.onOpen = () => {
+        rtcSay('connected, moves now travel by themselves');
+        peer.send({ kind: 'code', code: session.code });
+      };
+      peer.onMessage = (msg) => {
+        if (msg && msg.kind === 'code') loadCode(msg.code);
+      };
+    }
+    return peer;
+  };
+
+  el('rtc-offer').addEventListener('click', async () => {
+    try {
+      rtcSay('gathering local addresses');
+      el('rtc-out').value = await rtcPeer().offer();
+      rtcSay('send that blob to the other player, then paste their reply below');
+    } catch (err) {
+      rtcSay(`could not make an offer: ${err && err.message ? err.message : err}`);
+    }
+  });
+
+  el('rtc-answer').addEventListener('click', async () => {
+    try {
+      el('rtc-out').value = await rtcPeer().answer(el('rtc-in').value);
+      rtcSay('send that answer back');
+    } catch (err) {
+      rtcSay(`could not answer: ${err && err.message ? err.message : err}`);
+    }
+  });
+
+  el('rtc-accept').addEventListener('click', async () => {
+    try {
+      await rtcPeer().accept(el('rtc-in').value);
+      rtcSay('answer accepted, waiting for the channel to open');
+    } catch (err) {
+      rtcSay(`could not accept: ${err && err.message ? err.message : err}`);
+    }
+  });
+
+  // ---- first paint
+  const fromHash = location.hash.startsWith('#g=') ? location.hash.slice(3) : '';
+  session = new opts.Session(game, { maxCodeLength: opts.maxCodeLength });
+  if (fromHash) {
+    if (!loadCode(fromHash, { quiet: true })) render();
+  } else {
+    render();
+  }
+  document.documentElement.dataset.ready = 'yes';
+}
+
+/* ---- bootstrap ---- */
+startApp({
+  game: reversi,
+  Session,
+  codeLengthBound,
+  rtcSupported,
+  rtcHonesty,
+  ManualPeer,
+  iceServers: [],
+  maxCodeLength: DEFAULT_MAX_CODE,
+});
+}());
+</script>
+</body>
+</html>
