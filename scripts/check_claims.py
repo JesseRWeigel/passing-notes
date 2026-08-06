@@ -22,6 +22,17 @@ import sys
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 
+class Range:
+    """Measured values that must all fall inside the range the README states.
+
+    For quantities that genuinely move between runs. Pinning one of those to an exact number
+    produces a check that fails on healthy code, which teaches people to ignore the check.
+    """
+
+    def __init__(self, *values):
+        self.values = values
+
+
 WRITERS = {
     "measurements.json": "node scripts/measure.mjs",
     "attacks.json": "node scripts/attack_url.mjs",
@@ -123,10 +134,14 @@ def main() -> int:
             r"\*\*\d+ of (\d+) sabotages\*\*",
             len(sabotage["sabotages"]),
         ),
+        # A range rather than a number. The SDP blob carries an ephemeral ICE ufrag, password
+        # and fingerprint, so its length moves by a few characters every run. A claim rounded to
+        # the nearest ten looked stable and then straddled a boundary, which made verify fail on
+        # a healthy tree. State the range the README actually promises and check membership.
         (
             "the RTC handshake blob",
-            r"handshake blobs are around \*\*(\d+)\*\*",
-            round(browser["rtc"]["offerChars"], -1),
+            r"handshake blobs run \*\*(\d+) to (\d+)\*\* characters",
+            Range(browser["rtc"]["offerChars"], browser["rtc"]["answerChars"]),
         ),
         (
             "plies re-derived rather than sent",
@@ -145,6 +160,14 @@ def main() -> int:
         found = re.search(pattern, readme)
         if not found:
             problems.append(f"{label}: the README no longer contains a claim matching /{pattern}/")
+            continue
+        if isinstance(want, Range):
+            low, high = (int(found.group(1)), int(found.group(2)))
+            outside = [v for v in want.values if not low <= v <= high]
+            if outside:
+                problems.append(
+                    f"{label}: the README promises {low} to {high} and this run measured {outside}"
+                )
             continue
         raw = found.group(1).replace(",", "")
         got = float(raw) if "." in raw else int(raw)

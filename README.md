@@ -57,6 +57,11 @@ a code cannot exceed **52 characters**, ever, for any legal game.
 Across **6,000 simulated games** under three policies, including one that actively tries to make
 the code long, the longest was **42 characters**. Median 35 to 40 depending on policy.
 
+The whole-link figures assume a base URL of `https://jesserweigel.github.io/passing-notes/`,
+which is 48 characters of overhead. **That page is not deployed yet**, and the URL is used here
+only as a representative length. Playing from a local file gives a longer link and changes
+nothing about the code itself.
+
 **A 2000-character limit is therefore unreachable for this game.** The worst possible link is
 **100 characters**, leaving 1900 characters of headroom. Every carrier we measured against fits the worst
 case, not merely the typical case:
@@ -155,7 +160,7 @@ This section matters more than the one above it.
 
 - **Live mode uses the network, and says so.** The optional WebRTC transport in `src/rtc.mjs` is
   genuinely serverless in its signalling (you paste the offer and answer by hand, and the
-  handshake blobs are around **630** characters against a 34-character game link). The connection
+  handshake blobs run **600 to 700** characters against a 34-character game link). The connection
   is another matter: with no ICE servers it works only on a shared local network, and configuring
   a STUN server means talking to somebody else's machine. `rtcHonesty()` returns prose saying
   which situation the page is in, the page prints it, and `test/rtc.test.mjs` fails if it ever
@@ -321,7 +326,7 @@ python Python 3.12.3
          ok    uncaught errors on the spectator page: []
          ok    the page reports it has no ICE servers configured: "yes"
          ok    WebRTC is available: "yes"
-         ok    the handshake blobs are 632 and 636 characters, against a 34 character game
+         ok    the handshake blobs are 631 and 632 characters, against a 34 character game
          ok    two browsers connected peer to peer with no ICE server and no signalling server
          browser checks: 28 passed, 0 failed
 
