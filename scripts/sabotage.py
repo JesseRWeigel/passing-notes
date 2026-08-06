@@ -69,7 +69,11 @@ COPY_IGNORE = shutil.ignore_patterns(".git", "node_modules", "results", "__pycac
 # The guards, by the name a sabotage refers to. Each is a command and the thing it is for.
 GUARDS = {
     "build": (["node", "scripts/build.mjs", "--check"], "docs/index.html still matches src/"),
-    "tests": (["node", "--test", "test/"], "the unit suite"),
+    # Node 24 resolves a bare directory as a module rather than expanding it, so `--test test/`
+    # exits nonzero on a perfectly healthy tree. That made this guard "catch" every sabotage
+    # including ones it could not see. The files are listed explicitly, and check_guards below
+    # is what stops the same class of mistake returning.
+    "tests": (["node", "--test", "__TESTFILES__"], "the unit suite"),
     "fixture": (["node", "scripts/check_fixture.mjs"], "src/ replays the recorded game"),
     "independent": (
         ["python3", "scripts/check_independent.py", "fixtures/recorded-game.json"],
@@ -192,6 +196,22 @@ SABOTAGES = [
         "catchers": ["browser"],
     },
     {
+        # The one that justifies scripts/check_independent.py existing at all. Every other
+        # sabotage here is caught by a JavaScript check reading a fixture recorded from
+        # JavaScript. Re-record the fixture from the sabotaged code and those two agree with
+        # each other perfectly, both wrong. Only an implementation that shares nothing with
+        # them can still object.
+        "name": "move order reversed AND the fixture re-recorded to match",
+        "why": "two derivations that agree can both be wrong; only the clean room can see it",
+        "file": "src/reversi.mjs",
+        "old": "out.push(cell);",
+        "new": "out.unshift(cell);",
+        "fingerprint": "node",
+        "prepare": [["node", "scripts/browser_play.mjs", "--record"]],
+        "catchers": ["fixture", "independent"],
+        "expect": ["independent"],
+    },
+    {
         "name": "the score readout swapped",
         "why": "a display-only bug that no module test can see, because no module renders anything",
         "file": "src/ui.mjs",
@@ -205,10 +225,46 @@ SABOTAGES = [
 
 def run(command, cwd):
     """Exit code and combined output, with no shell in the way."""
+    resolved = []
+    for word in command:
+        if word == "__TESTFILES__":
+            found = sorted(
+                os.path.join("test", n) for n in os.listdir(os.path.join(cwd, "test"))
+                if n.endswith(".test.mjs")
+            )
+            if not found:
+                raise SystemExit("there are no test files, so the tests guard cannot mean anything")
+            resolved.extend(found)
+        else:
+            resolved.append(word)
     done = subprocess.run(
-        command, cwd=cwd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True
+        resolved, cwd=cwd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True
     )
     return done.returncode, done.stdout
+
+
+def check_guards(tree, names):
+    """Every guard must PASS on unsabotaged code before it is allowed to condemn anything.
+
+    A guard that fails on a clean tree reports "caught" for every sabotage, including the ones it
+    cannot see, and the harness then certifies attacks that proved nothing. That is not
+    hypothetical: `node --test test/` exits nonzero on a healthy tree under Node 24, because a
+    bare directory is resolved as a module. It sat in this file marking every sabotage caught.
+
+    This is the gate-3 counterpart of the null control, and it exists for the same reason.
+    """
+    problems = []
+    for name in names:
+        command, purpose = GUARDS[name]
+        code, output = run(command, tree)
+        if code == 0:
+            print(f"    ok    {name:12} exits 0 on clean code, so a nonzero exit means something")
+        else:
+            problems.append(name)
+            print(f"    FAIL  {name:12} exits {code} on CLEAN code, so it cannot distinguish anything")
+            for line in output.strip().splitlines()[-4:]:
+                print(f"          {line[:110]}")
+    return problems
 
 
 def stage(destination):
@@ -297,6 +353,14 @@ def main():
             print("\n  refusing to run any sabotage while the null control fails")
             return 1
 
+        # ---------------------------------------------------------- the guards must work
+        used = sorted({g for s in chosen for g in s.get("catchers", DEFAULT_CATCHERS)})
+        print("\n  GUARD CONTROL: every guard must exit 0 on the clean baseline")
+        broken = check_guards(baseline_tree, used)
+        if broken:
+            print(f"\n  refusing to run: {', '.join(broken)} cannot tell clean code from sabotaged code")
+            return 1
+
         # ---------------------------------------------------------- the sabotages
         for number, sab in enumerate(chosen, 1 if args.only is None else args.only):
             print(f"\n  {number}. {sab['name']}")
@@ -345,6 +409,15 @@ def main():
             print(f"     gate 2 ok    the {which} fingerprint moved {digest(baseline[which])} -> {digest(got)} ({changed_lines} lines differ)")
             record.update(gate2=True, fingerprintWas=digest(baseline[which]), fingerprintNow=digest(got))
 
+            # Some sabotages need the attacker to do more than edit a file, for example to
+            # re-record the fixture so the JavaScript checks agree with the new behaviour.
+            for step in sab.get("prepare", []):
+                step_code, step_output = run(step, tree)
+                label = " ".join(step[1:])
+                print(f"       prep  {label} -> exit {step_code}")
+                if step_code != 0:
+                    print(f"              {step_output.strip().splitlines()[-1][:100] if step_output.strip() else ''}")
+
             # ---- GATE 3: something caught it
             catchers = sab.get("catchers", DEFAULT_CATCHERS)
             caught_by = []
@@ -356,7 +429,14 @@ def main():
                 if guard_code != 0:
                     caught_by.append(guard)
             record["caughtBy"] = caught_by
-            if caught_by:
+            # Where a sabotage exists to justify one particular check, that check is the one
+            # that has to fire. "Something else noticed" would leave the point unproven.
+            missing = [g for g in sab.get("expect", []) if g not in caught_by]
+            if missing:
+                print(f"     GATE 3 FAIL  {', '.join(missing)} had to catch this one and did not")
+                problems.append(f"{number}. {sab['name']}: {', '.join(missing)} did not catch it")
+                record["gate3"] = False
+            elif caught_by:
                 print(f"     gate 3 ok    caught by {', '.join(caught_by)}")
                 record["gate3"] = True
             else:

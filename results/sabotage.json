@@ -49,7 +49,7 @@
       "gate1": true,
       "gate2": true,
       "fingerprintWas": "15b0b1be64aa42a7",
-      "fingerprintNow": "90b594e489aa4892",
+      "fingerprintNow": "73bbd13a02ecc553",
       "caughtBy": [
         "tests",
         "fixture"
@@ -117,7 +117,7 @@
       "gate1": true,
       "gate2": true,
       "fingerprintWas": "15b0b1be64aa42a7",
-      "fingerprintNow": "cb11d66e07072520",
+      "fingerprintNow": "e533f44d84877e50",
       "caughtBy": [
         "tests",
         "fixture"
@@ -144,7 +144,7 @@
       "gate1": true,
       "gate2": true,
       "fingerprintWas": "15b0b1be64aa42a7",
-      "fingerprintNow": "0b00572a440ec37f",
+      "fingerprintNow": "72546cbfd789122f",
       "caughtBy": [
         "tests",
         "fixture"
@@ -179,6 +179,19 @@
     },
     {
       "number": 14,
+      "name": "move order reversed AND the fixture re-recorded to match",
+      "file": "src/reversi.mjs",
+      "gate1": true,
+      "gate2": true,
+      "fingerprintWas": "15b0b1be64aa42a7",
+      "fingerprintNow": "6903b9f93892d6a3",
+      "caughtBy": [
+        "independent"
+      ],
+      "gate3": true
+    },
+    {
+      "number": 15,
       "name": "the score readout swapped",
       "file": "src/ui.mjs",
       "gate1": true,
