@@ -22,9 +22,27 @@ import sys
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 
+WRITERS = {
+    "measurements.json": "node scripts/measure.mjs",
+    "attacks.json": "node scripts/attack_url.mjs",
+    "browser.json": "node scripts/browser_play.mjs",
+    "sabotage.json": "python3 scripts/sabotage.py --json results/sabotage.json",
+}
+
+
 def load(name):
-    with open(os.path.join(ROOT, "results", name), encoding="utf-8") as handle:
-        return json.load(handle)
+    """results/ is derived output and is not committed, so say how to make it rather than
+    failing with a bare traceback that looks like a bug in this script."""
+    path = os.path.join(ROOT, "results", name)
+    try:
+        with open(path, encoding="utf-8") as handle:
+            return json.load(handle)
+    except FileNotFoundError:
+        raise SystemExit(
+            f"        results/{name} does not exist yet. Produce it with:\n"
+            f"            {WRITERS.get(name, 'bash scripts/verify.sh')}\n"
+            f"        or run the whole thing with: bash scripts/verify.sh"
+        )
 
 
 def main() -> int:
@@ -139,17 +157,25 @@ def main() -> int:
     return 1 if problems else 0
 
 
+def counted(name, how):
+    """A count that scripts/verify.sh recorded from a real run of the thing being counted."""
+    path = os.path.join(ROOT, "results", name)
+    try:
+        with open(path, encoding="utf-8") as handle:
+            return int(handle.read().strip())
+    except FileNotFoundError:
+        raise SystemExit(
+            f"        results/{name} does not exist yet. It is written by scripts/verify.sh\n"
+            f"        when it runs {how}. Run: bash scripts/verify.sh"
+        )
+
+
 def browser_check_count():
-    """The browser harness counts its own checks; read the count it reported."""
-    path = os.path.join(ROOT, "results", "browser-checks.txt")
-    with open(path, encoding="utf-8") as handle:
-        return int(handle.read().strip())
+    return counted("browser-checks.txt", "the browser harness")
 
 
 def expected_test_count():
-    path = os.path.join(ROOT, "results", "test-count.txt")
-    with open(path, encoding="utf-8") as handle:
-        return int(handle.read().strip())
+    return counted("test-count.txt", "the unit suite")
 
 
 if __name__ == "__main__":
