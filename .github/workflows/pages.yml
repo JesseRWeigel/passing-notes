@@ -7,8 +7,13 @@ permissions:
   contents: read
   pages: write
   id-token: write
-# Deliberately NOT `group: pages`. A single shared group means one wedged run holds the lock and
-# every later deploy queues behind it, and a wedged run cannot always be cancelled.
+# NOT the shared `group: pages`. A single lock means one wedged run blocks every later deploy,
+# and a wedged run cannot always be cancelled: this fleet hit a run that returned 502 to both
+# cancel and force-cancel and held the lock indefinitely.
+#
+# The cost is real and is accepted here: runs no longer serialise, so two pushes close together
+# can finish out of order and an older commit can overwrite a newer one. That is tolerable for a
+# site deployed by hand a few times a year.
 concurrency:
   group: pages-${{ github.run_id }}
   cancel-in-progress: false
